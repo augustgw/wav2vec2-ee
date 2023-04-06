@@ -1,0 +1,8 @@
+transformers
+datasets>=1.14.0
+evaluate
+jiwer
+librosa
+torchaudio
+torch>=1.6
+conf
