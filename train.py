@@ -68,8 +68,8 @@ trainer = Trainer(
     data_collator=data_collator,
     args=training_args,
     compute_metrics=compute_metrics,
-    train_dataset=train_dataloader,
-    eval_dataset=eval_dataloader,
+    train_dataset=train_dataset,
+    eval_dataset=eval_dataset,
     tokenizer=processor.feature_extractor,
 )
 

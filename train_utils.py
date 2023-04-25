@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from evaluate import load
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 from transformers import (
@@ -75,7 +76,7 @@ class DataCollatorCTCWithPadding:
 
 # * Compute metrics
 def compute_metrics(pred, processor: Wav2Vec2Processor) -> Dict[str, float]:
-    wer_metric = load_metric("wer")
+    wer_metric = load("wer")
     pred_logits = pred.predictions
     pred_ids = np.argmax(pred_logits, axis=-1)
     pred.label_ids[pred.label_ids == -100] = processor.tokenizer.pad_token_id
@@ -89,7 +90,7 @@ def get_trainer(
     processor: Wav2Vec2Processor,
     training_args: TrainingArguments,
     train_dataset: list,
-    test_dataset: list) -> Trainer:
+    eval_dataset: list) -> Trainer:
     data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
     trainer = Trainer(
         model=model,
@@ -97,11 +98,10 @@ def get_trainer(
         args=training_args,
         compute_metrics=lambda x: compute_metrics(x, processor),
         train_dataset=train_dataset,
-        eval_dataset=test_dataset,
+        eval_dataset=eval_dataset,
         tokenizer=processor.feature_extractor,
     )
     return trainer
-
 
 def preprocess(
     processor: Wav2Vec2Processor,
@@ -111,11 +111,11 @@ def preprocess(
     alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
     for item in dataset:
         row = dict()
-        array, text = item[0], item[2]
+        array, text = item['audio']['array'], item['text']
         text = text.upper() if alphabets.isupper() else text.lower()
         row["input_values"] = processor(
             array, sampling_rate=processor.feature_extractor.sampling_rate).input_values[0]
         with processor.as_target_processor():
             row["labels"] = processor(text.strip()).input_ids
         inputs.append(row)
-    return
+    return inputs

@@ -3,6 +3,8 @@ datasets>=1.14.0
 evaluate
 jiwer
 librosa
-torch==1.13.1
-torchaudio==0.13.1
+# torch==1.13.1
+# torchaudio==0.13.1
 conf
+wandb
+accelerate >= 0.12.0
