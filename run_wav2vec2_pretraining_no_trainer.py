@@ -525,7 +525,7 @@ def main():
         return
 
     # 3. Load model
-    config = Wav2Vec2Config.from_pretrained(args.model_name_or_path)
+    config = Wav2Vec2Config.from_pretrained(args.model_name_or_path, output_hidden_states=True) # GW - force output of intermediate layers
 
     # pretraining is only supported for "newer" stable layer norm architecture
     # apply_spec_augment has to be True, mask_feature_prob has to be 0.0
@@ -623,6 +623,7 @@ def main():
 
             # forward
             outputs = model(**batch)
+            hidden_states = outputs.hidden_states
 
             # divide loss by gradient accumulation steps since gradients
             # are accumulated for multiple backward passes in PyTorch
