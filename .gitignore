@@ -1,2 +1,10 @@
 LibriSpeech/
 dev-clean.tar.gz
+data/
+wandb/
+training_with_callbacks/
+models/
+preprocessed_data/
+temp/
+wandb/
+util/

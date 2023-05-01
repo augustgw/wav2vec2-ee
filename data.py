@@ -7,7 +7,7 @@
 from conf import *
 # import torchaudio
 # from util.data_loader import collate_fn
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk, concatenate_datasets
 
 # train_dataset1 = torchaudio.datasets.LIBRISPEECH(
 #     "/corpora", url="train-clean-100", download=False)
@@ -21,8 +21,12 @@ from datasets import load_dataset
 # train_dataset = torchaudio.datasets.LIBRISPEECH(
 #     "/mnt/c/Projects/wav2vec2/wav2vec2/", url="dev-clean", download=True)
 
-train_dataset = load_dataset("librispeech_asr", split="validation.clean", streaming=True)
-eval_dataset = load_dataset("librispeech_asr", split="validation.clean", streaming=True)
+train_dataset_1 = load_from_disk("preprocessed_data/preprocessed-train_dataset_1.clean")
+train_dataset_2 = load_from_disk("preprocessed_data/preprocessed-train_dataset_2.clean")
+train_dataset_3 = load_from_disk("preprocessed_data/preprocessed-train_dataset_3.clean")
+train_dataset = concatenate_datasets([train_dataset_1, train_dataset_2, train_dataset_3])
+
+eval_dataset = load_from_disk("data/validation_clean")
 
 # train_dataloader = torch.utils.data.DataLoader(
 #     train_dataset, pin_memory=False, batch_size=batch_size, shuffle=shuffle, collate_fn=collate_fn, num_workers=num_workers)
@@ -36,5 +40,3 @@ eval_dataset = load_dataset("librispeech_asr", split="validation.clean", streami
 # data_files = {"train100": "train-clean-100",
 #               "train360": "train-clean-360", "train500": "train-other-500"}
 # dataset = load_dataset("namespace/your_dataset_name", data_files=data_files)
-
-# print(train_dataset[0])

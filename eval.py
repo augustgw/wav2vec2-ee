@@ -56,9 +56,6 @@ for split in ['validation.clean','validation.other','test.clean','test.other']:
      dataset = load_dataset("librispeech_asr", split=split, streaming=True)
      sampling_rate = dataset.features["audio"].sampling_rate
 
-     dataset = load_dataset("librispeech_asr", split=split, streaming=True)
-     sampling_rate = dataset.features["audio"].sampling_rate
-
      outfile = open(split + '_results.txt', 'w')
      results = {'expected':[],'layer_2':[],'layer_4':[],'layer_6':[],'layer_8':[],'layer_10':[],'layer_12':[]}
 
