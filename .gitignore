@@ -8,7 +8,8 @@ preprocessed_data/
 temp/
 wandb/
 util/
-ee_loss_pretrained_models/
+ee_loss_finetuning_models/
+ee_loss_training_models/
 wav2vec2-pretrained-demo/
 Wav2Vec2ForPretraining.py
 Wav2Vec2ForPretrainingOutput.py

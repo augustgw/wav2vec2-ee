@@ -643,19 +643,12 @@ def main():
             # are accumulated for multiple backward passes in PyTorch
             
             # loss = outputs.loss / args.gradient_accumulation_steps
+            # accelerator.backward(loss)
 
-            # print(dir())
-            # print(type(model))
-            # print(model)
-            # exit()
-
-            loss = 0
-            for i in [2,4,6,8,10,12]: # layer 0 is not the first layer but the positional embeddings, so skip
-                hidden_state = outputs.hidden_states[i]
-
-            loss /= gradient_accumulation_steps
-            
-            accelerator.backward(loss)
+            # # loss = 0
+            # # for i in [2,4,6,8,10,12]: # layer 0 is not the first layer but the positional embeddings, so skip
+            # #     hidden_state = outputs.hidden_states[i]
+            # loss /= gradient_accumulation_steps
 
             # make sure that `num_losses` is summed for distributed training
             # and average gradients over losses of all devices

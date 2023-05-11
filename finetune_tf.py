@@ -29,7 +29,7 @@ model = EEWav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base", output_hidden
 processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base")
 
 # * Train
-model.freeze_feature_encoder() # Original Wav2Vec2 paper does not train encoder during fine-tuning
+model.freeze_feature_encoder() # Original Wav2Vec2 paper does not train featurue encoder during fine-tuning
 model.train()
 
 trainer = get_trainer(

@@ -10,6 +10,7 @@ from transformers import (
     Wav2Vec2ForCTC,
     TrainingArguments
     )
+from transformers.models.wav2vec2.modeling_wav2vec2 import Wav2Vec2Encoder
 from datasets import load_metric, Dataset
 from transformers.modeling_outputs import CausalLMOutput
 from tqdm import tqdm
@@ -75,7 +76,6 @@ class DataCollatorCTCWithPadding:
         batch["labels"] = labels
 
         return batch
-
 
 # * Compute metrics
 def compute_metrics(pred, processor: Wav2Vec2Processor) -> Dict[str, float]:
@@ -167,6 +167,9 @@ class EEWav2Vec2ForCTC(Wav2Vec2ForCTC):
             loss=loss, logits=logits, hidden_states=outputs.hidden_states, attentions=outputs.attentions
         )
 
+    def reset_encoder(self, config):
+        self.wav2vec2.encoder = Wav2Vec2Encoder(config)
+
 
 def get_trainer(
     model: EEWav2Vec2ForCTC,
@@ -202,24 +205,3 @@ def preprocess(
             row["labels"] = processor(text.strip()).input_ids
         inputs.append(row)
     return inputs
-
-# def map_to_array(batch):
-#     batch['array'] = batch['audio']['array']
-#     batch['text'] = batch['text'].lower().strip()
-#     return batch
-
-# def map_input_values(batch, processor):
-#     # batch['input_values'] = processor(batch['array'], sampling_rate=processor.feature_extractor.sampling_rate).input_values[0]
-#     # return batch
-
-#     return {'array': processor(batch['array'], 
-#                 sampling_rate=processor.feature_extractor.sampling_rate).input_values[0]}
-
-# def preprocess(batch, processor):
-#     input_values = processor(batch['array'], 
-#                 sampling_rate=processor.feature_extractor.sampling_rate).input_values
-
-#     with processor.as_target_processor():
-#         labels = processor(batch['text']).input_ids
-    
-#     return {'input_values': input_values, 'labels': labels}
