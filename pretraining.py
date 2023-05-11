@@ -23,7 +23,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 import datasets
+from datasets import Dataset, DatasetDict
 import torch
+import torchaudio
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from datasets import DatasetDict, concatenate_datasets, load_dataset
@@ -48,6 +50,7 @@ from transformers.utils import get_full_repo_name, send_example_telemetry
 
 logger = get_logger(__name__)
 
+torch.set_num_threads(10)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Finetune a transformers model on a text classification task")
@@ -430,36 +433,44 @@ def main():
     # 1. Download and create train, validation dataset
     # We load all dataset configuration and datset split pairs passed in
     # ``args.dataset_config_names`` and ``args.dataset_split_names``
-    datasets_splits = []
-    for dataset_config_name, train_split_name in zip(args.dataset_config_names, args.dataset_split_names):
-        # load dataset
-        dataset_split = load_dataset(
-            args.dataset_name,
-            dataset_config_name,
-            split=train_split_name,
-            cache_dir=args.cache_dir,
-        )
-        datasets_splits.append(dataset_split)
-
-    # Next, we concatenate all configurations and splits into a single training dataset
+    
     raw_datasets = DatasetDict()
-    if len(datasets_splits) > 1:
-        raw_datasets["train"] = concatenate_datasets(datasets_splits).shuffle(seed=args.seed)
-    else:
-        raw_datasets["train"] = datasets_splits[0]
+    # raw_datasets["train"] = datasets.load_dataset('/workspace/wav2vec2/LibriSpeech/dev-clean')
+    raw_datasets["train"] = datasets.load_dataset('/workspace/wav2vec2/LibriSpeech/dev-clean')["train"]
+    raw_datasets["validation"] = datasets.load_dataset('/workspace/wav2vec2/LibriSpeech/dev-clean')["train"]
+    
+    # datasets_splits = []
+    # for dataset_config_name, train_split_name in zip(args.dataset_config_names, args.dataset_split_names):
+    #     # load dataset
+    #     # dataset_split = load_dataset(
+    #     #     args.dataset_name,
+    #     #     dataset_config_name,
+    #     #     split=train_split_name,
+    #     #     cache_dir=args.cache_dir,
+    #     # )
+    #     dataset_split = torchaudio.datasets.LIBRISPEECH(
+    #         "/workspace/wav2vec2/", url=train_split_name, download=False)
+    #     datasets_splits.append(dataset_split)
 
-    # Take ``args.validation_split_percentage`` from the training dataset for the validation_split_percentage
-    num_validation_samples = raw_datasets["train"].num_rows * args.validation_split_percentage // 100
+    # # Next, we concatenate all configurations and splits into a single training dataset
+    # raw_datasets = DatasetDict()
+    # if len(datasets_splits) > 1:
+    #     raw_datasets["train"] = concatenate_datasets(datasets_splits).shuffle(seed=args.seed)
+    # else:
+    #     raw_datasets["train"] = datasets_splits[0]
 
-    if num_validation_samples == 0:
-        raise ValueError(
-            "`args.validation_split_percentage` is less than a single sample "
-            f"for {len(raw_datasets['train'])} training samples. Increase "
-            "`args.num_validation_split_percentage`. "
-        )
+    # # Take ``args.validation_split_percentage`` from the training dataset for the validation_split_percentage
+    # num_validation_samples = raw_datasets["train"].__len__() * args.validation_split_percentage // 100
 
-    raw_datasets["validation"] = raw_datasets["train"].select(range(num_validation_samples))
-    raw_datasets["train"] = raw_datasets["train"].select(range(num_validation_samples, raw_datasets["train"].num_rows))
+    # if num_validation_samples == 0:
+    #     raise ValueError(
+    #         "`args.validation_split_percentage` is less than a single sample "
+    #         f"for {len(raw_datasets['train'])} training samples. Increase "
+    #         "`args.num_validation_split_percentage`. "
+    #     )
+
+    # raw_datasets["validation"] = raw_datasets["train"].select(range(num_validation_samples))
+    # raw_datasets["train"] = raw_datasets["train"].select(range(num_validation_samples, raw_datasets["train"].__len__()))
 
     # 2. Now we preprocess the datasets including loading the audio, resampling and normalization
     # Thankfully, `datasets` takes care of automatically loading and resampling the audio,
@@ -525,7 +536,10 @@ def main():
         return
 
     # 3. Load model
-    config = Wav2Vec2Config.from_pretrained(args.model_name_or_path, output_hidden_states=True) # GW - force output of intermediate layers
+    config = Wav2Vec2Config.from_pretrained(args.model_name_or_path, 
+        do_stable_layer_norm=True,
+        feat_extract_norm='layer',
+        output_hidden_states=True) # GW - force output of intermediate layers
 
     # pretraining is only supported for "newer" stable layer norm architecture
     # apply_spec_augment has to be True, mask_feature_prob has to be 0.0
@@ -627,7 +641,20 @@ def main():
 
             # divide loss by gradient accumulation steps since gradients
             # are accumulated for multiple backward passes in PyTorch
-            loss = outputs.loss / args.gradient_accumulation_steps
+            
+            # loss = outputs.loss / args.gradient_accumulation_steps
+
+            # print(dir())
+            # print(type(model))
+            # print(model)
+            # exit()
+
+            loss = 0
+            for i in [2,4,6,8,10,12]: # layer 0 is not the first layer but the positional embeddings, so skip
+                hidden_state = outputs.hidden_states[i]
+
+            loss /= gradient_accumulation_steps
+            
             accelerator.backward(loss)
 
             # make sure that `num_losses` is summed for distributed training
@@ -690,7 +717,7 @@ def main():
 
                 train_logs = {
                     "loss": (loss * args.gradient_accumulation_steps) / num_losses,
-                    "constrast_loss": outputs.contrastive_loss / num_losses,
+                    "contrast_loss": outputs.contrastive_loss / num_losses,
                     "div_loss": outputs.diversity_loss / num_losses,
                     "%_mask_idx": percent_masked / accelerator.num_processes,
                     "ppl": outputs.codevector_perplexity,

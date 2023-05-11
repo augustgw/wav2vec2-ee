@@ -12,6 +12,7 @@ from transformers import (
     )
 from datasets import load_metric, Dataset
 from transformers.modeling_outputs import CausalLMOutput
+from tqdm import tqdm
 
 @dataclass
 class DataCollatorCTCWithPadding:
@@ -54,7 +55,7 @@ class DataCollatorCTCWithPadding:
 
         batch = self.processor.pad(
             input_features,
-            padding=self.padding,
+            padding=True,
             max_length=self.max_length,
             pad_to_multiple_of=self.pad_to_multiple_of,
             return_tensors="pt",
@@ -62,7 +63,7 @@ class DataCollatorCTCWithPadding:
         with self.processor.as_target_processor():
             labels_batch = self.processor.pad(
                 label_features,
-                padding=self.padding,
+                padding=True,
                 max_length=self.max_length_labels,
                 pad_to_multiple_of=self.pad_to_multiple_of_labels,
                 return_tensors="pt",
@@ -185,27 +186,27 @@ def get_trainer(
     )
     return trainer
 
-# def preprocess(
-#     processor: Wav2Vec2Processor,
-#     dataset: Dataset
-#     ) -> List[Dict]:
-#     inputs = list()
-#     alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
-#     for item in dataset:
-#         row = dict()
-#         array, text = item['audio']['array'], item['text']
-#         text = text.upper() if alphabets.isupper() else text.lower()
-#         row["input_values"] = processor(
-#             array, sampling_rate=processor.feature_extractor.sampling_rate).input_values[0]
-#         with processor.as_target_processor():
-#             row["labels"] = processor(text.strip()).input_ids
-#         inputs.append(row)
-#     return inputs
+def preprocess(
+    processor: Wav2Vec2Processor,
+    dataset: Dataset
+    ) -> List[Dict]:
+    inputs = list()
+    alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
+    for item in tqdm(dataset):
+        row = dict()
+        array, text = item[0], item[2]
+        text = text.upper() if alphabets.isupper() else text.lower()
+        row["input_values"] = processor(
+            array, sampling_rate=processor.feature_extractor.sampling_rate).input_values[0][0]
+        with processor.as_target_processor():
+            row["labels"] = processor(text.strip()).input_ids
+        inputs.append(row)
+    return inputs
 
-def map_to_array(batch):
-    batch['array'] = batch['audio']['array']
-    batch['text'] = batch['text'].lower().strip()
-    return batch
+# def map_to_array(batch):
+#     batch['array'] = batch['audio']['array']
+#     batch['text'] = batch['text'].lower().strip()
+#     return batch
 
 # def map_input_values(batch, processor):
 #     # batch['input_values'] = processor(batch['array'], sampling_rate=processor.feature_extractor.sampling_rate).input_values[0]
@@ -214,11 +215,11 @@ def map_to_array(batch):
 #     return {'array': processor(batch['array'], 
 #                 sampling_rate=processor.feature_extractor.sampling_rate).input_values[0]}
 
-def preprocess(batch, processor):
-    input_values = processor(batch['array'], 
-                sampling_rate=processor.feature_extractor.sampling_rate).input_values
+# def preprocess(batch, processor):
+#     input_values = processor(batch['array'], 
+#                 sampling_rate=processor.feature_extractor.sampling_rate).input_values
 
-    with processor.as_target_processor():
-        labels = processor(batch['text']).input_ids
+#     with processor.as_target_processor():
+#         labels = processor(batch['text']).input_ids
     
-    return {'input_values': input_values, 'labels': labels}
+#     return {'input_values': input_values, 'labels': labels}

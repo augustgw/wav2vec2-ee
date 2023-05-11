@@ -3,8 +3,9 @@ from train_utils import *
 from data import *
 from tqdm import tqdm
 import os 
+import torch
 
-os.environ["WANDB_DISABLED"] = "true"
+torch.set_num_threads(10)
 
 training_args = TrainingArguments(
     output_dir='/workspace/wav2vec2/models',
@@ -18,10 +19,9 @@ training_args = TrainingArguments(
     num_train_epochs=100,
     weight_decay=0.01,
     push_to_hub=False,
-    metric_for_best_model='f1',
-    # report_to='wandb',
-    eval_accumulation_steps=8,
+    report_to='wandb',
     logging_strategy='epoch',
+    dataloader_num_workers=10,
 )
 
 # * Load model
@@ -34,8 +34,8 @@ model.train()
 
 trainer = get_trainer(
     model, processor, training_args,
-    train_dataset=train_dataset,
-    eval_dataset=eval_dataset)
+    train_dataset=preprocess(processor, train_dataset),
+    eval_dataset=preprocess(processor, eval_dataset))
 
 try:
     trainer.train()
