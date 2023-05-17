@@ -14,5 +14,8 @@ ee_loss_training_models/
 ee_loss_finetuning_resume_models/
 kd_ee_finetuning_models/
 wav2vec2-pretrained-demo/
+
 Wav2Vec2ForPretraining.py
 Wav2Vec2ForPretrainingOutput.py
+
+*.pyc
