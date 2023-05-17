@@ -3,7 +3,7 @@
 @when : 2023-03-30
 @homepage : https://github.com/augustgw/early-exit-transformer
 """
-
+import torch
 import torchaudio
 from datasets import load_dataset, load_from_disk, concatenate_datasets
 

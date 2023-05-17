@@ -1,0 +1,17 @@
+split: validation.clean
+layer_2 WER: 1.0
+layer_4 WER: 1.0
+layer_6 WER: 1.0
+layer_8 WER: 1.0
+layer_10 WER: 1.0
+layer_12 WER: 1.0
+
+split: validation.other
+layer_2 WER: 1.0
+layer_4 WER: 1.0
+layer_6 WER: 1.0
+layer_8 WER: 1.0
+layer_10 WER: 1.0
+layer_12 WER: 1.0
+
+split: test.clean

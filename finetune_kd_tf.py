@@ -1,26 +1,24 @@
-from transformers import (
-    Wav2Vec2ForCTC, 
-    Wav2Vec2Processor,
-    Wav2Vec2Config, 
-    TrainingArguments
-)
+from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, TrainingArguments
 from train_utils import *
 from data import *
 from tqdm import tqdm
 import os 
 import torch
 
+ee_alpha = 0.7
+
 torch.set_num_threads(10)
-torch.manual_seed(999999999)
 
 training_args = TrainingArguments(
-    output_dir='/workspace/wav2vec2/ee_loss_training_models',
+    output_dir='/workspace/wav2vec2/kd_ee_finetuning_models',
     evaluation_strategy='no',
+    # eval_steps=50,
+    # save_total_limit=5,
     save_strategy = 'epoch',
     learning_rate=2e-5,
-    per_device_train_batch_size=6,
+    per_device_train_batch_size=12,
     per_device_eval_batch_size=1,
-    num_train_epochs=1000,
+    num_train_epochs=100,
     weight_decay=0.01,
     push_to_hub=False,
     report_to='wandb',
@@ -29,13 +27,11 @@ training_args = TrainingArguments(
 )
 
 # * Load model
-model = EEWav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base", output_hidden_states=True)
-config = Wav2Vec2Config.from_pretrained("facebook/wav2vec2-base", output_hidden_states=True)
 processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base")
+model = KDEEWav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base", ee_alpha=ee_alpha, processor=processor)
 
 # * Train
-model.freeze_feature_encoder() # Freeze feature encoder (CNN)
-model.reset_encoder(config) # Initialize new encoder (Transformer)
+model.freeze_feature_encoder() # Original Wav2Vec2 paper does not train featurue encoder during fine-tuning
 model.train()
 
 trainer = get_trainer(
