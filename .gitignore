@@ -1,21 +1,25 @@
+# Optimization
 __pycache__/
+*.pyc
+
+# Corpora / data
 LibriSpeech/
-dev-clean.tar.gz
 data/
+dev-clean.tar.gz
+preprocessed_data/
+
+# Old / etc.
 wandb/
 training_with_callbacks/
 models/
-preprocessed_data/
 temp/
-wandb/
 util/
+
+# Training / models
 ee_loss_finetuning_models/
 ee_loss_training_models/
 ee_loss_finetuning_resume_models/
 kd_ee_finetuning_models/
 wav2vec2-pretrained-demo/
 
-Wav2Vec2ForPretraining.py
-Wav2Vec2ForPretrainingOutput.py
 
-*.pyc
