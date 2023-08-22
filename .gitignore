@@ -15,6 +15,7 @@ models/
 temp/
 util/
 Dockerfile
+data_utils.py
 
 # Training / models
 ee_loss_finetuning_models/
@@ -22,5 +23,8 @@ ee_loss_training_models/
 ee_loss_finetuning_resume_models/
 kd_ee_finetuning_models/
 wav2vec2-pretrained-demo/
+checkpoint-468740-epoch-36/
+checkpoint-585925-epoch-25/
+ee_finetuning_models/
 
 

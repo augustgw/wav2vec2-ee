@@ -14,6 +14,7 @@ from transformers.models.wav2vec2.modeling_wav2vec2 import Wav2Vec2Encoder
 from datasets import load_metric, Dataset
 from transformers.modeling_outputs import CausalLMOutput
 from tqdm import tqdm
+import json
 
 @dataclass
 class DataCollatorCTCWithPadding:
@@ -92,6 +93,14 @@ class EEWav2Vec2ForCTC(Wav2Vec2ForCTC):
     def __init__(self, config):
         super().__init__(config)
 
+        # Create new decoders
+        self.decoders = nn.ModuleList([self.lm_head for i in range(6)])
+        # Initialize with pretrained decoder
+        for i in range(len(self.decoders)):
+            self.decoders[i].load_state_dict(self.lm_head.state_dict())
+        # # Delete pretrained decoder
+        # self.lm_head = nn.Identity() # <- When counting parameters, subtract lm_head
+
     def forward(
         self,
         input_values: Optional[torch.Tensor],
@@ -123,11 +132,11 @@ class EEWav2Vec2ForCTC(Wav2Vec2ForCTC):
         
         # Compute loss for each hidden layer
         loss = 0
-        for i in [2,4,6,8,10,12]: # layer 0 is not the first layer but the positional embeddings, so skip
-            hidden_state = outputs.hidden_states[i]
+        for i in range(6): 
+            hidden_state = outputs.hidden_states[(i+1)*2] # [2,4,6,8,10,12]: layer 0 is not the first layer but the positional embeddings, so skip
             hidden_state = self.dropout(hidden_state)
             
-            logits = self.lm_head(hidden_state) 
+            logits = self.decoders[i](hidden_state) 
             
             if labels is not None:
                 if labels.max() >= self.config.vocab_size:
@@ -175,6 +184,14 @@ class KDEEWav2Vec2ForCTC(Wav2Vec2ForCTC):
         super().__init__(config)
         self.ee_alpha = ee_alpha
         self.processor = processor
+
+        # Create new decoders
+        self.decoders = nn.ModuleList([self.lm_head for i in range(6)])
+        # Initialize with pretrained decoder
+        for i in range(len(self.decoders)):
+            self.decoders[i].load_state_dict(self.lm_head.state_dict())
+        # # Delete pretrained decoder
+        # self.lm_head = nn.Identity() # <- When counting parameters, subtract lm_head
 
     def forward(
         self,
@@ -240,11 +257,11 @@ class KDEEWav2Vec2ForCTC(Wav2Vec2ForCTC):
         # print(teacher_flattened_targets.size())
 
 
-        for i in [2,4,6,8,10,12]: # layer 0 is not the first layer but the positional embeddings, so skip
-            hidden_state = outputs.hidden_states[i]
+        for i in range(6): 
+            hidden_state = outputs.hidden_states[(i+1)*2] # [2,4,6,8,10,12]: layer 0 is not the first layer but the positional embeddings, so skip
             hidden_state = self.dropout(hidden_state)
             
-            logits = self.lm_head(hidden_state)
+            logits = self.decoders[i](hidden_state) 
             
             if labels is not None:
                 if labels.max() >= self.config.vocab_size:
@@ -279,7 +296,7 @@ class KDEEWav2Vec2ForCTC(Wav2Vec2ForCTC):
                     )
 
                 ## KD LOSS
-                if i < 12: # Do not compute KD loss for teacher layer
+                if i < 5: # Do not compute KD loss for teacher layer
                     with torch.backends.cudnn.flags(enabled=False):
                         kd_loss += nn.functional.ctc_loss(
                             log_probs,
@@ -337,4 +354,42 @@ def preprocess(
         with processor.as_target_processor():
             row["labels"] = processor(text.strip()).input_ids
         inputs.append(row)
+    return inputs
+
+def batch_preprocess(
+    processor: Wav2Vec2Processor,
+    dataset: Dataset
+    ) -> List[Dict]:
+    inputs = list()
+    alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
+    
+    # def gen():
+    #     for ex in dataset:
+    #         d = {'array': ex[0], 'text': ex[2]}
+    #         yield d  # this has to be a dictionary
+    # hf_dataset = Dataset.from_generator(gen)
+
+    print(type(dataset))
+    exit()
+
+    for data in tqdm(hf_dataset):
+        row = dict()
+        array, text = data['array'], data['text']
+        text = text.upper() if alphabets.isupper() else text.lower()
+        row["input_values"] = processor(
+            array, sampling_rate=processor.feature_extractor.sampling_rate).input_values[0][0]
+        with processor.as_target_processor():
+            row["labels"] = processor(text.strip()).input_ids
+        inputs.append(row)
+
+    # for item in tqdm(dataset):
+    #     row = dict()
+    #     array, text = item[0], item[2]
+    #     text = text.upper() if alphabets.isupper() else text.lower()
+    #     row["input_values"] = processor(
+    #         array, sampling_rate=processor.feature_extractor.sampling_rate).input_values[0][0]
+    #     with processor.as_target_processor():
+    #         row["labels"] = processor(text.strip()).input_ids
+    #     inputs.append(row)
+
     return inputs

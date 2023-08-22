@@ -10,7 +10,7 @@ ee_alpha = 0.7
 torch.set_num_threads(10)
 
 training_args = TrainingArguments(
-    output_dir='/workspace/wav2vec2/kd_ee_finetuning_models',
+    output_dir='/workspace/wav2vec2/kdee_finetuning_models',
     evaluation_strategy='no',
     # eval_steps=50,
     # save_total_limit=5,
@@ -18,7 +18,7 @@ training_args = TrainingArguments(
     learning_rate=2e-5,
     per_device_train_batch_size=12,
     per_device_eval_batch_size=1,
-    num_train_epochs=100,
+    num_train_epochs=30,
     weight_decay=0.01,
     push_to_hub=False,
     report_to='wandb',
@@ -29,6 +29,7 @@ training_args = TrainingArguments(
 # * Load model
 processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base")
 model = KDEEWav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base", ee_alpha=ee_alpha, processor=processor)
+# model = KDEEWav2Vec2ForCTC.from_pretrained("ee_loss_finetuning_resume_models/checkpoint-187496", ee_alpha=ee_alpha, processor=processor)
 
 # * Train
 model.freeze_feature_encoder() # Original Wav2Vec2 paper does not train featurue encoder during fine-tuning
