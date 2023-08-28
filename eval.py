@@ -3,6 +3,7 @@ import torch
 from datasets import load_dataset
 from tqdm.auto import tqdm
 from evaluate import load
+from train_utils import *
 import sys
 import os
 
@@ -15,7 +16,7 @@ else:
           os.mkdir(results_dir)
 
 processor = AutoProcessor.from_pretrained("facebook/wav2vec2-base")
-model = Wav2Vec2ForCTC.from_pretrained(checkpoint_dir, output_hidden_states=True)
+model = EEWav2Vec2ForCTC.from_pretrained(checkpoint_dir, output_hidden_states=True)
 wer = load('wer')
 
 def inference(items, outfile, results):
@@ -34,17 +35,17 @@ def inference(items, outfile, results):
 
      hidden_states = outputs.hidden_states
 
-     for i in [2,4,6,8,10,12]:
+     for i in range(6):
          # print(len(hidden_states[i]))
-         predicted_ids = torch.argmax(model.lm_head(hidden_states[i]), dim=-1)
+         predicted_ids = torch.argmax(model.decoders[i](hidden_states[(i+1)*2]), dim=-1)
          transcription = processor.batch_decode(predicted_ids)
-         outfile.write('\tlayer_' + str(i) + ': ' + transcription[0].lower() + '\n')
-         results['layer_' + str(i)].append(transcription[0].lower())
+         outfile.write('\tlayer_' + str((i+1)*2) + ': ' + transcription[0].lower() + '\n')
+         results['layer_' + str((i+1)*2)].append(transcription[0].lower())
      outfile.write('\n')
 
 werfile = open(results_dir + '/wer_results.txt', 'w')
 
-for split in ['validation.clean','validation.other','test.clean','test.other']:
+for split in ['test.clean','test.other']: # ['validation.clean','validation.other','test.clean','test.other']:
      print(split)
      werfile.write('split: ' + split + '\n')
 

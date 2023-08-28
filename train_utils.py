@@ -50,7 +50,16 @@ class DataCollatorCTCWithPadding:
     pad_to_multiple_of_labels: Optional[int] = None
 
     def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
-         # split inputs and labels since they have to be of different lenghts and need
+        # alphabets = ''.join(filter(lambda x: x.isalpha(), list(self.processor.tokenizer.decoder.values())))
+        # print(features)
+        # for item in features:
+        #     item['text'] = item['text'].upper() if alphabets.isupper() else item['text'].lower()
+        #     item["input_values"] = self.processor(
+        #         item['array'], sampling_rate=self.processor.feature_extractor.sampling_rate).input_values[0][0]
+        #     with self.processor.as_target_processor():
+        #         item["labels"] = self.processor(item['text'].strip()).input_ids
+        
+        # split inputs and labels since they have to be of different lenghts and need
         # different padding methods
         input_features = [{"input_values": feature["input_values"]} for feature in features]
         label_features = [{"input_ids": feature["labels"]} for feature in features]
@@ -341,7 +350,7 @@ def get_trainer(
 
 def preprocess(
     processor: Wav2Vec2Processor,
-    dataset: Dataset
+    dataset
     ) -> List[Dict]:
     inputs = list()
     alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
@@ -356,18 +365,51 @@ def preprocess(
         inputs.append(row)
     return inputs
 
+def preprocess_item(
+    processor: Wav2Vec2Processor,
+    item
+    ) -> Dict:
+    alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
+    row = dict()
+    array, text = item[0], item[2]
+    text = text.upper() if alphabets.isupper() else text.lower()
+    row["input_values"] = processor(
+        array, sampling_rate=processor.feature_extractor.sampling_rate).input_values[0][0].tolist()
+    with processor.as_target_processor():
+        row["labels"] = processor(text.strip()).input_ids
+    return row
+
+def preprocess_dict(
+    processor: Wav2Vec2Processor,
+    dataset
+    ) -> List[Dict]:
+    alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
+    for item in tqdm(dataset):
+        item['text'] = item['text'].upper() if alphabets.isupper() else item['text'].lower()
+        item["input_values"] = processor(
+            item['array'], sampling_rate=processor.feature_extractor.sampling_rate).input_values[0][0]
+        with processor.as_target_processor():
+            item["labels"] = processor(item['text'].strip()).input_ids
+    return dataset
+
+def preprocess_dict_elem(
+    processor: Wav2Vec2Processor,
+    item
+    ) -> List[Dict]:
+    alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
+    item['text'] = item['text'].upper() if alphabets.isupper() else item['text'].lower()
+    item["input_values"] = processor(
+        item['array'], sampling_rate=processor.feature_extractor.sampling_rate).input_values[0][0]
+    with processor.as_target_processor():
+        item["labels"] = processor(item['text'].strip()).input_ids
+    return item
+
 def batch_preprocess(
     processor: Wav2Vec2Processor,
     dataset: Dataset
     ) -> List[Dict]:
     inputs = list()
     alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
-    
-    # def gen():
-    #     for ex in dataset:
-    #         d = {'array': ex[0], 'text': ex[2]}
-    #         yield d  # this has to be a dictionary
-    # hf_dataset = Dataset.from_generator(gen)
 
     print(type(dataset))
     exit()

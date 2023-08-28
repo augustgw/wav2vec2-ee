@@ -4,6 +4,7 @@ __pycache__/
 
 # Corpora / data
 LibriSpeech/
+LibriSpeech_processed/
 data/
 dev-clean.tar.gz
 preprocessed_data/
@@ -26,5 +27,6 @@ wav2vec2-pretrained-demo/
 checkpoint-468740-epoch-36/
 checkpoint-585925-epoch-25/
 ee_finetuning_models/
+trained_models/
 
 
