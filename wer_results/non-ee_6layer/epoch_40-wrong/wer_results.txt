@@ -1,0 +1,6 @@
+split: test.clean
+predicted WER: 1.0119065733414485
+
+split: test.other
+predicted WER: 1.0119213648434366
+

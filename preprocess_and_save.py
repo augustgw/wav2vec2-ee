@@ -4,10 +4,10 @@ from train_utils import *
 from tqdm import tqdm
 from datasets import Dataset
 
-split = "train-other-500"
+split = "train-clean-100"
 
 train_dataset = torchaudio.datasets.LIBRISPEECH(
-    "/workspace", url="train-other-500", download=False)
+    "/workspace", url="train-clean-100", download=False)
 processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base")
 
 i = 1

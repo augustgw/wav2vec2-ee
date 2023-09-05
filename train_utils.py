@@ -379,59 +379,19 @@ def preprocess_item(
         row["labels"] = processor(text.strip()).input_ids
     return row
 
-def preprocess_dict(
-    processor: Wav2Vec2Processor,
-    dataset
-    ) -> List[Dict]:
-    alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
-    for item in tqdm(dataset):
-        item['text'] = item['text'].upper() if alphabets.isupper() else item['text'].lower()
-        item["input_values"] = processor(
-            item['array'], sampling_rate=processor.feature_extractor.sampling_rate).input_values[0][0]
-        with processor.as_target_processor():
-            item["labels"] = processor(item['text'].strip()).input_ids
-    return dataset
+def output_entropy(model):
+    #How to compute the entropies form the encoder outputs of an early exit model
+    encoder = model.hidden_states #?
 
-def preprocess_dict_elem(
-    processor: Wav2Vec2Processor,
-    item
-    ) -> List[Dict]:
-    alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
-    item['text'] = item['text'].upper() if alphabets.isupper() else item['text'].lower()
-    item["input_values"] = processor(
-        item['array'], sampling_rate=processor.feature_extractor.sampling_rate).input_values[0][0]
-    with processor.as_target_processor():
-        item["labels"] = processor(item['text'].strip()).input_ids
-    return item
+    ent_norm = encoder.size(2) * encoder.size(3) #number_of_frames * numnber_of_bpetokens
 
-def batch_preprocess(
-    processor: Wav2Vec2Processor,
-    dataset: Dataset
-    ) -> List[Dict]:
-    inputs = list()
-    alphabets = ''.join(filter(lambda x: x.isalpha(), list(processor.tokenizer.decoder.values())))
-
-    print(type(dataset))
-    exit()
-
-    for data in tqdm(hf_dataset):
-        row = dict()
-        array, text = data['array'], data['text']
-        text = text.upper() if alphabets.isupper() else text.lower()
-        row["input_values"] = processor(
-            array, sampling_rate=processor.feature_extractor.sampling_rate).input_values[0][0]
-        with processor.as_target_processor():
-            row["labels"] = processor(text.strip()).input_ids
-        inputs.append(row)
-
-    # for item in tqdm(dataset):
-    #     row = dict()
-    #     array, text = item[0], item[2]
-    #     text = text.upper() if alphabets.isupper() else text.lower()
-    #     row["input_values"] = processor(
-    #         array, sampling_rate=processor.feature_extractor.sampling_rate).input_values[0][0]
-    #     with processor.as_target_processor():
-    #         row["labels"] = processor(text.strip()).input_ids
-    #     inputs.append(row)
-
-    return inputs
+    i = 0
+    for enc in encoder: #enc are the outputs (softmax) of the encoder layers
+        
+        logp=enc.squeeze(0)
+        pr=torch.exp(logp)
+        entropy=0
+        for a,b in zip(logp,pr):
+            entropy += torch.dot(a,b)
+        entropy = entropy / ent_norm
+        print("entropy of layer[",i,"]:", entropy)

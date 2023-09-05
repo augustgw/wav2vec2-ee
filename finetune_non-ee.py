@@ -1,37 +1,35 @@
-from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, TrainingArguments
+from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, TrainingArguments, Wav2Vec2Config
 from train_utils import *
 from data import *
 from tqdm import tqdm
 import os 
 import torch
 
-ee_alpha = 0.7
-
-# torch.set_num_threads(10)
+model_config = Wav2Vec2Config(num_hidden_layers=6)
 
 training_args = TrainingArguments(
-    output_dir='/workspace/trained_models/fixed_kdee_finetuning',
+    output_dir='/workspace/trained_models/non-ee_6layer',
     evaluation_strategy='no',
     # eval_steps=50,
     # save_total_limit=5,
     save_strategy = 'epoch',
     learning_rate=2e-5,
-    per_device_train_batch_size=6,
+    per_device_train_batch_size=12,
     per_device_eval_batch_size=1,
-    num_train_epochs=25,
+    num_train_epochs=40,
     weight_decay=0.01,
     push_to_hub=False,
     report_to='wandb',
     logging_strategy='epoch',
-    dataloader_num_workers=10,
+    dataloader_num_workers=36,
 )
 
 # * Load model
 processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base")
-model = KDEEWav2Vec2ForCTC.from_pretrained("trained_models/fixed_ee_finetuning/checkpoint-1406220-epoch-30", ee_alpha=ee_alpha, processor=processor)
+model = Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base", config=model_config)
 
 # * Train
-model.freeze_feature_encoder() # Original Wav2Vec2 paper does not train featurue encoder during fine-tuning
+model.freeze_feature_encoder() # Original Wav2Vec2 paper does not train feature encoder during fine-tuning
 model.train()
 
 trainer = get_trainer(
