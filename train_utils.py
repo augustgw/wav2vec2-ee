@@ -380,18 +380,18 @@ def preprocess_item(
     return row
 
 def output_entropy(model):
-    #How to compute the entropies form the encoder outputs of an early exit model
-    encoder = model.hidden_states #?
+    # How to compute the entropies form the encoder outputs of an early exit model
+    encoder = model.wav2vec2.encoder.layers
 
-    ent_norm = encoder.size(2) * encoder.size(3) #number_of_frames * numnber_of_bpetokens
+    ent_norm = encoder.size(2) * encoder.size(3) # number_of_frames * number_of_bpetokens
 
     i = 0
-    for enc in encoder: #enc are the outputs (softmax) of the encoder layers
+    for enc in encoder: # enc are the outputs (softmax) of the encoder layers
         
-        logp=enc.squeeze(0)
-        pr=torch.exp(logp)
-        entropy=0
-        for a,b in zip(logp,pr):
+        logp = enc.squeeze(0)
+        pr = torch.exp(logp)
+        entropy = 0
+        for a, b in zip(logp,pr):
             entropy += torch.dot(a,b)
         entropy = entropy / ent_norm
         print("entropy of layer[",i,"]:", entropy)

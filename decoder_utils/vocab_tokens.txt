@@ -1,0 +1,32 @@
+<pad>
+<s>
+</s>
+<unk>
+|
+E e
+T t
+A a
+O o
+N n
+I i
+H h
+S s
+R r
+D d
+L l
+U u
+M m
+W w
+C c
+F f
+G g
+Y y
+P p
+B b
+V v
+K k
+'
+X x
+J j
+Q q
+Z z
