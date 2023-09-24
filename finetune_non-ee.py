@@ -5,16 +5,16 @@ from tqdm import tqdm
 import os 
 import torch
 
-model_config = Wav2Vec2Config(num_hidden_layers=6)
+model_config = Wav2Vec2Config(num_hidden_layers=12)
 
 training_args = TrainingArguments(
-    output_dir='/workspace/trained_models/non-ee_6layer',
+    output_dir='/workspace/trained_models/non-ee_12layer',
     evaluation_strategy='no',
     # eval_steps=50,
     # save_total_limit=5,
     save_strategy = 'epoch',
     learning_rate=2e-5,
-    per_device_train_batch_size=12,
+    per_device_train_batch_size=6,
     per_device_eval_batch_size=1,
     num_train_epochs=40,
     weight_decay=0.01,

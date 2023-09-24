@@ -15,8 +15,10 @@ training_with_callbacks/
 models/
 temp/
 util/
+figures/
 Dockerfile
 data_utils.py
+viz.py
 
 # Training / models
 ee_loss_finetuning_models/

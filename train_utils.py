@@ -235,11 +235,8 @@ class KDEEWav2Vec2ForCTC(Wav2Vec2ForCTC):
         ee_loss = 0
         kd_loss = 0
 
-        # print(self.lm_head(hidden_states[12]).size())
         teacher_ids = torch.argmax(self.lm_head(hidden_states[12]), dim=-1)
-        # print(teacher_ids.size())
         teacher_transcriptions = self.processor.batch_decode(teacher_ids)
-        # print(teacher_transcriptions))
         with self.processor.as_target_processor():
             teacher_labels = self.processor(teacher_transcriptions).input_ids
         
@@ -248,11 +245,6 @@ class KDEEWav2Vec2ForCTC(Wav2Vec2ForCTC):
         for i in range(len(teacher_labels)):
             teacher_labels[i] += [-100] * (max_label_len - len(teacher_labels[i]))
         teacher_labels = torch.LongTensor(teacher_labels)
-
-        # print(teacher_labels)
-        # print(teacher_labels.size())
-        # print(labels)
-        # print(labels.size())
         
         # if teacher_labels.max() >= self.config.vocab_size:
         #     raise ValueError(f"Teacher label values must be <= vocab_size: {self.config.vocab_size}")
@@ -263,8 +255,6 @@ class KDEEWav2Vec2ForCTC(Wav2Vec2ForCTC):
         teacher_labels_mask = teacher_labels >= 0
         teacher_target_lengths = teacher_labels_mask.sum(-1)
         teacher_flattened_targets = teacher_labels.masked_select(teacher_labels_mask)
-        # print(teacher_flattened_targets.size())
-
 
         for i in range(6): 
             hidden_state = outputs.hidden_states[(i+1)*2] # [2,4,6,8,10,12]: layer 0 is not the first layer but the positional embeddings, so skip
@@ -330,6 +320,148 @@ class KDEEWav2Vec2ForCTC(Wav2Vec2ForCTC):
     def reset_encoder(self, config):
         self.wav2vec2.encoder = Wav2Vec2Encoder(config)
 
+class DKDEEWav2Vec2ForCTC(Wav2Vec2ForCTC):
+    def __init__(self, config, ee_alpha, processor):
+        super().__init__(config)
+        self.ee_alpha = ee_alpha
+        self.processor = processor
+
+        # Create new decoders
+        self.decoders = nn.ModuleList([self.lm_head for i in range(6)])
+        # Initialize with pretrained decoder
+        for i in range(len(self.decoders)):
+            self.decoders[i].load_state_dict(self.lm_head.state_dict())
+        # # Delete pretrained decoder
+        # self.lm_head = nn.Identity() # <- When counting parameters, subtract lm_head
+
+    def forward(
+        self,
+        input_values: Optional[torch.Tensor],
+        attention_mask: Optional[torch.Tensor] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = True,
+        return_dict: Optional[bool] = None,
+        labels: Optional[torch.Tensor] = None,
+    ) -> Union[Tuple, CausalLMOutput]:
+        r"""
+        labels (`torch.LongTensor` of shape `(batch_size, target_length)`, *optional*):
+            Labels for connectionist temporal classification. Note that `target_length` has to be smaller or equal to
+            the sequence length of the output logits. Indices are selected in `[-100, 0, ..., config.vocab_size - 1]`.
+            All labels set to `-100` are ignored (masked), the loss is only computed for labels in `[0, ...,
+            config.vocab_size - 1]`.
+        """
+
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        outputs = self.wav2vec2(
+            input_values,
+            attention_mask=attention_mask,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        hidden_states = outputs.hidden_states
+        
+        # Compute loss for each hidden layer
+        ee_loss = 0
+        kd_loss = list()
+        joint_loss = 0
+
+        teacher_ids = torch.argmax(self.lm_head(hidden_states[12]), dim=-1)
+        teacher_transcriptions = self.processor.batch_decode(teacher_ids)
+        with self.processor.as_target_processor():
+            teacher_labels = self.processor(teacher_transcriptions).input_ids
+        
+        # Pad teacher labels (with -100) to max len in batch
+        max_label_len = len(max(teacher_labels, key=len))
+        for i in range(len(teacher_labels)):
+            teacher_labels[i] += [-100] * (max_label_len - len(teacher_labels[i]))
+        teacher_labels = torch.LongTensor(teacher_labels)
+        
+        # if teacher_labels.max() >= self.config.vocab_size:
+        #     raise ValueError(f"Teacher label values must be <= vocab_size: {self.config.vocab_size}")
+        attention_mask = (
+            attention_mask if attention_mask is not None else torch.ones_like(input_values, dtype=torch.long)
+        )
+        input_lengths = self._get_feat_extract_output_lengths(attention_mask.sum(-1)).to(torch.long)
+        teacher_labels_mask = teacher_labels >= 0
+        teacher_target_lengths = teacher_labels_mask.sum(-1)
+        teacher_flattened_targets = teacher_labels.masked_select(teacher_labels_mask)
+
+        for i in range(6): 
+            hidden_state = outputs.hidden_states[(i+1)*2] # [2,4,6,8,10,12]: layer 0 is not the first layer but the positional embeddings, so skip
+            hidden_state = self.dropout(hidden_state)
+            
+            logits = self.decoders[i](hidden_state) 
+            
+            if labels is not None:
+                if labels.max() >= self.config.vocab_size:
+                    raise ValueError(f"Label values must be <= vocab_size: {self.config.vocab_size}")
+
+                # retrieve loss input_lengths from attention_mask
+                attention_mask = (
+                    attention_mask if attention_mask is not None else torch.ones_like(input_values, dtype=torch.long)
+                )
+                input_lengths = self._get_feat_extract_output_lengths(attention_mask.sum(-1)).to(torch.long)
+
+                # assuming that padded tokens are filled with -100
+                # when not being attended to
+                labels_mask = labels >= 0
+                target_lengths = labels_mask.sum(-1)
+                flattened_targets = labels.masked_select(labels_mask)
+                # print(flattened_targets.size())
+
+                # ctc_loss doesn't support fp16
+                log_probs = nn.functional.log_softmax(logits, dim=-1, dtype=torch.float32).transpose(0, 1)
+
+                # EE LOSS
+                with torch.backends.cudnn.flags(enabled=False):
+                    ee_loss = nn.functional.ctc_loss(
+                        log_probs,
+                        flattened_targets,
+                        input_lengths,
+                        target_lengths,
+                        blank=self.config.pad_token_id,
+                        reduction=self.config.ctc_loss_reduction,
+                        zero_infinity=self.config.ctc_zero_infinity,
+                    )
+                    joint_loss += self.ee_alpha[i] * ee_loss
+
+                ## KD LOSS
+                if i < 5: # Do not compute KD loss for teacher layer
+                    with torch.backends.cudnn.flags(enabled=False):
+                        kd_loss = (nn.functional.ctc_loss(
+                            log_probs,
+                            teacher_flattened_targets,
+                            input_lengths,
+                            teacher_target_lengths,
+                            blank=self.config.pad_token_id,
+                            reduction=self.config.ctc_loss_reduction,
+                            zero_infinity=self.config.ctc_zero_infinity,
+                        ))
+                        joint_loss += (1 - self.ee_alpha[i]) * kd_loss
+
+        # joint_loss = 0
+
+        # print(ee_loss)
+        # print(kd_loss)
+
+        # for i in range(len(kd_loss)):
+        #     joint_loss += ((self.ee_alpha[i] * ee_loss[i])/6) + ((1 - self.ee_alpha[i]) * kd_loss[i])
+        # joint_loss += ((self.ee_alpha[i] * ee_loss[6])/6) # For final layer, no KD
+        
+        if not return_dict:
+            output = (logits,) + outputs[_HIDDEN_STATES_START_POSITION:]
+            return ((joint_loss,) + output) if joint_loss is not None else output
+
+        return CausalLMOutput(
+            loss=joint_loss, logits=logits, hidden_states=outputs.hidden_states, attentions=outputs.attentions
+        )
+
+    def reset_encoder(self, config):
+        self.wav2vec2.encoder = Wav2Vec2Encoder(config)
+
 def get_trainer(
     model,
     processor: Wav2Vec2Processor,
@@ -378,20 +510,3 @@ def preprocess_item(
     with processor.as_target_processor():
         row["labels"] = processor(text.strip()).input_ids
     return row
-
-def output_entropy(model):
-    # How to compute the entropies form the encoder outputs of an early exit model
-    encoder = model.wav2vec2.encoder.layers
-
-    ent_norm = encoder.size(2) * encoder.size(3) # number_of_frames * number_of_bpetokens
-
-    i = 0
-    for enc in encoder: # enc are the outputs (softmax) of the encoder layers
-        
-        logp = enc.squeeze(0)
-        pr = torch.exp(logp)
-        entropy = 0
-        for a, b in zip(logp,pr):
-            entropy += torch.dot(a,b)
-        entropy = entropy / ent_norm
-        print("entropy of layer[",i,"]:", entropy)

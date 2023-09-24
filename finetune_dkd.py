@@ -5,12 +5,12 @@ from tqdm import tqdm
 import os 
 import torch
 
-ee_alpha = 0.7
+ee_alpha = [0.65, 0.70, 0.75, 0.80, 0.85, 1.00] # Dynamic KD application - len must be equal to number of exits 
 
 # torch.set_num_threads(10)
 
 training_args = TrainingArguments(
-    output_dir='/workspace/trained_models/fixed_kdee_finetuning_resume',
+    output_dir='/workspace/trained_models/dkdee_finetuning',
     evaluation_strategy='no',
     # eval_steps=50,
     # save_total_limit=5,
@@ -24,13 +24,11 @@ training_args = TrainingArguments(
     report_to='wandb',
     logging_strategy='epoch',
     dataloader_num_workers=10,
-    resume_from_checkpoint="trained_models/fixed_kdee_finetuning/checkpoint-421866-epoch-18",
-    ignore_data_skip=True,
 )
 
 # * Load model
 processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base")
-model = KDEEWav2Vec2ForCTC.from_pretrained("trained_models/fixed_kdee_finetuning/checkpoint-421866-epoch-18", ee_alpha=ee_alpha, processor=processor)
+model = DKDEEWav2Vec2ForCTC.from_pretrained("trained_models/fixed_ee_finetuning/checkpoint-1406220-epoch-30", ee_alpha=ee_alpha, processor=processor)
 
 # * Train
 model.freeze_feature_encoder() # Original Wav2Vec2 paper does not train featurue encoder during fine-tuning
@@ -42,7 +40,7 @@ trainer = get_trainer(
     eval_dataset=eval_dataset)
 
 try:
-    trainer.train(resume_from_checkpoint="trained_models/fixed_kdee_finetuning/checkpoint-421866-epoch-18")
+    trainer.train()
 except KeyboardInterrupt:
     print('Training early stopped by KeyboardInterrupt.')
 
