@@ -8,6 +8,7 @@ LibriSpeech_processed/
 data/
 dev-clean.tar.gz
 preprocessed_data/
+1919-142785-0028.wav
 
 # Old / etc.
 wandb/
@@ -18,7 +19,11 @@ util/
 figures/
 Dockerfile
 data_utils.py
-viz.py
+newkd_copy_test.py
+preprocess_and_save.py
+eval_script.sh
+compare_wer.py
+wer_results/test/
 
 # Training / models
 ee_loss_finetuning_models/

@@ -16,8 +16,11 @@ else:
           os.mkdir(results_dir)
 
 processor = AutoProcessor.from_pretrained("facebook/wav2vec2-base")
-model = EEWav2Vec2ForCTC.from_pretrained(checkpoint_dir, output_hidden_states=True)
+model = EEWav2Vec2ForCTC.from_pretrained(checkpoint_dir,output_hidden_states=True)
+# model = NewKDEEWav2Vec2ForCTC.from_pretrained(checkpoint_dir, processor=processor, output_hidden_states=True)
 wer = load('wer')
+
+model.eval()
 
 def inference(items, outfile, results):
 
@@ -42,6 +45,7 @@ def inference(items, outfile, results):
          outfile.write('\tlayer_' + str((i+1)*2) + ': ' + transcription[0].lower() + '\n')
          results['layer_' + str((i+1)*2)].append(transcription[0].lower())
      outfile.write('\n')
+
 
 werfile = open(results_dir + '/wer_results.txt', 'w')
 
