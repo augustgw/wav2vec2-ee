@@ -1,4 +1,4 @@
-from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, TrainingArguments
+from transformers import Wav2Vec2Processor, TrainingArguments
 from train_utils import *
 from data import *
 from tqdm import tqdm

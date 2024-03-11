@@ -1,4 +1,5 @@
 import torch
+import math
 from torch import nn
 import numpy as np
 from evaluate import load
@@ -13,8 +14,6 @@ from transformers import (
 from transformers.models.wav2vec2.modeling_wav2vec2 import Wav2Vec2Encoder, Wav2Vec2EncoderLayer
 from transformers.modeling_outputs import CausalLMOutput
 from tqdm import tqdm
-from pyctcdecode import build_ctcdecoder
-
 
 @dataclass
 class DataCollatorCTCWithPadding:
@@ -521,7 +520,7 @@ class NewKDEEWav2Vec2ForCTC(Wav2Vec2ForCTC):
 
 
 class ConfidenceWav2Vec2ForCTC(Wav2Vec2ForCTC):
-    def __init__(self, config, processor, inverse_confidence=False):
+    def __init__(self, config, processor, inverse_confidence=True):
         super().__init__(config)
         self.processor = processor
         self.inverse_confidence = inverse_confidence
@@ -531,12 +530,18 @@ class ConfidenceWav2Vec2ForCTC(Wav2Vec2ForCTC):
         # Initialize with pretrained decoder
         for i in range(len(self.decoders)):
             self.decoders[i].load_state_dict(self.lm_head.state_dict())
-        # # Delete pretrained decoder
-        # self.lm_head = nn.Identity() # <- When counting parameters, subtract lm_head
-            
-        self.ctc_decoder = build_ctcdecoder(
-            list(processor.tokenizer.get_vocab().keys()))
-
+    
+    
+    def get_score(self, logits):
+        pred_ids = torch.argmax(logits, dim=-1) # shape [1, 329]
+        # Take softmax of logits
+        scores = torch.nn.functional.log_softmax(logits, dim=-1) # shape [1, 329, 32]
+        # Get scores associated with highest probability labels
+        pred_scores = scores.gather(-1, pred_ids.unsqueeze(-1))[:, :, 0] # shape [1, 329]
+        # Average scores
+        score = torch.mean(pred_scores)
+        return score
+    
 
     def forward(
         self,
@@ -564,8 +569,6 @@ class ConfidenceWav2Vec2ForCTC(Wav2Vec2ForCTC):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-
-        hidden_states = outputs.hidden_states
 
         # Compute loss for each hidden layer
         loss = 0
@@ -600,24 +603,29 @@ class ConfidenceWav2Vec2ForCTC(Wav2Vec2ForCTC):
                     logits, dim=-1, dtype=torch.float32).transpose(0, 1)
                 
                 # Compute CTC score
-                ctc_output = self.ctc_decoder.decode_beams(logits)[0]
-                conf_score = ctc_output[-2]
+                raw_score = self.get_score(logits)
+                conf_score = [max(0.1, math.exp(raw_score))]
 
                 with torch.backends.cudnn.flags(enabled=False):
-                    ctc_loss = nn.functional.ctc_loss(
+                    ctc_red_loss = nn.functional.ctc_loss(
                         log_probs,
                         flattened_targets,
                         input_lengths,
                         target_lengths,
                         blank=self.config.pad_token_id,
-                        reduction=self.config.ctc_loss_reduction,
+                        reduction="none",
                         zero_infinity=self.config.ctc_zero_infinity,
                     )
         
                     if self.inverse_confidence:
-                        loss += ctc_loss * (1 / conf_score)
+                        layer_loss = torch.div(ctc_red_loss, torch.Tensor(conf_score).to(self.device))
                     else:
-                        loss += ctc_loss * conf_score
+                        layer_loss = torch.mul(ctc_red_loss, torch.Tensor(conf_score).to(self.device))
+
+                    layer_loss = torch.div(layer_loss, target_lengths)
+                    layer_loss = torch.mean(layer_loss)
+
+                    loss += layer_loss
 
         if not return_dict:
             output = (logits,) + outputs[_HIDDEN_STATES_START_POSITION:]

@@ -24,6 +24,11 @@ preprocess_and_save.py
 eval_script.sh
 compare_wer.py
 wer_results/test/
+wer_results/test_confidence_inv/
+ctc_score_test.py
+hf_vs_pyctc.txt
+KD_vs_weighted_KD.txt
+confidence_score_test.py
 
 # Training / models
 ee_loss_finetuning_models/
@@ -35,5 +40,6 @@ checkpoint-468740-epoch-36/
 checkpoint-585925-epoch-25/
 ee_finetuning_models/
 trained_models/
+eval_ctc_decoder.py
 
 

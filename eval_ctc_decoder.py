@@ -48,7 +48,7 @@ def inference(items, outfile, results):
         transcription = ctc_decoder.decode(predicted_ids)
         outfile.write('\tlayer_' + str((i+1)*2) + ': ' +
                       transcription.lower() + '\n')
-        results['layer_' + str((i+1)*2)].append(transcription[0].lower())
+        results['layer_' + str((i+1)*2)].append(transcription.lower())
     outfile.write('\n')
 
 
