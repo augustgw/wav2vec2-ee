@@ -29,6 +29,9 @@ ctc_score_test.py
 hf_vs_pyctc.txt
 KD_vs_weighted_KD.txt
 confidence_score_test.py
+scratch.py
+scratch.ipynb
+wav2vec2_confidence_ctc_test.png
 
 # Training / models
 ee_loss_finetuning_models/

@@ -5,8 +5,5 @@ jiwer
 librosa
 # torch==1.13.1
 # torchaudio==0.13.1
-conf
 wandb
-accelerate >= 0.12.0
-pyctcdecoder
-# https://github.com/kpu/kenlm/archive/master.zip
+# accelerate >= 0.12.0
