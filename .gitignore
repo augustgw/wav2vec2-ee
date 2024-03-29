@@ -32,6 +32,8 @@ confidence_score_test.py
 scratch.py
 scratch.ipynb
 wav2vec2_confidence_ctc_test.png
+~$v2Vec_Early_Exit_Instructions.docx
+Wav2Vec_Early_Exit_Instructions.docx
 
 # Training / models
 ee_loss_finetuning_models/

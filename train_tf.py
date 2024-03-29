@@ -1,16 +1,13 @@
+import torch
 from transformers import (
-    Wav2Vec2ForCTC, 
     Wav2Vec2Processor,
     Wav2Vec2Config, 
     TrainingArguments
 )
 from train_utils import *
 from data import *
-from tqdm import tqdm
-import os 
-import torch
 
-torch.set_num_threads(10)
+
 torch.manual_seed(999999999)
 
 training_args = TrainingArguments(

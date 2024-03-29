@@ -1,9 +1,0 @@
-split: validation.clean
-layer_2 WER: 0.9967648248226169
-layer_4 WER: 0.9154810484908643
-layer_6 WER: 0.9001139663982942
-layer_8 WER: 0.897779493400978
-layer_10 WER: 0.8974302415352376
-layer_12 WER: 0.8995441344068232
-
-split: validation.other

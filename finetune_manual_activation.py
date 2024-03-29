@@ -7,8 +7,6 @@ num_exits = 2
 training_args = TrainingArguments(
     output_dir='/workspace/trained_models/manual_activ_2',
     evaluation_strategy='no',
-    # eval_steps=50,
-    # save_total_limit=5,
     save_strategy='epoch',
     learning_rate=1e-5,
     per_device_train_batch_size=8,
@@ -18,8 +16,6 @@ training_args = TrainingArguments(
     push_to_hub=False,
     logging_strategy='steps',       
     logging_steps=500,              
-    # dataloader_num_workers=10,
-    # dataloader_pin_memory=False,
 )
 
 # * Load model
@@ -28,8 +24,7 @@ model = ManualExitActivationWav2Vec2ForCTC.from_pretrained(
     "trained_models/fixed_ee_finetuning/checkpoint-1406220-epoch-30", num_exits=num_exits)
 
 # * Train
-# Original Wav2Vec2 paper does not train feature encoder during fine-tuning
-model.freeze_feature_encoder()
+model.freeze_feature_encoder() # Original Wav2Vec2 paper does not train feature encoder during fine-tuning
 model.train()
 
 trainer = get_trainer(
