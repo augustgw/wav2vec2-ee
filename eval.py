@@ -16,8 +16,11 @@ else:
           os.mkdir(results_dir)
 
 processor = AutoProcessor.from_pretrained("facebook/wav2vec2-base")
-model = EEWav2Vec2ForCTC.from_pretrained(checkpoint_dir, use_safetensors=True, output_hidden_states=True)
-# model = NewKDEEWav2Vec2ForCTC.from_pretrained(checkpoint_dir, processor=processor, output_hidden_states=True)
+model = EEWav2Vec2ForCTC.from_pretrained(checkpoint_dir, output_hidden_states=True)
+
+# Note: newer versions of HuggingFace save model checkpoints as 'safetensors' objects. Use this line to load these newer checkpoints.
+# model = EEWav2Vec2ForCTC.from_pretrained(checkpoint_dir, use_safetensors=True, output_hidden_states=True)
+
 wer = load('wer')
 
 model.eval()
