@@ -10,16 +10,16 @@ Wav2Vec2 model training with early-exit and knowledge distillation loss mechanis
 
 ### Basic training
 
-- Fine-tuning with only EE loss: `finetune_tf.py`
+- Fine-tuning with only EE loss: `finetune_ee.py`
 - Fine-tuning a model without early exits: `finetune_non-ee.py`
   - Change `model_config = Wav2Vec2Config(num_hidden_layers=X)` to set the number of layers in the encoder. E.g., for 4-layer encoder: `model_config = Wav2Vec2Config(num_hidden_layers=4)`
 
 ### Knowledge distillation
   
-- Fine-tuning with joint EE + KD loss: `finetune_kd_tf.py`
-  - Change `ee_alpha` in `finetune_kd_tf.py` to change weights in joint loss: `loss = (ee_alpha * ee_loss) + ((1 - ee_alpha) * kd_loss)` (default: `0.3`).
+- Fine-tuning with joint EE + KD loss: `finetune_kd.py`
+  - Change `ee_alpha` to change weights in joint loss: `loss = (ee_alpha * ee_loss) + ((1 - ee_alpha) * kd_loss)` (default: `0.3`).
 - Fine-tuning with dynamically weighted joint EE + KD loss: `finetune_dkd.py`
-  - Change `ee_alpha` in `finetune_kd_tf.py` to change weights in joint loss. `ee_alpha` is a list of weights corresponding to each exit of the model. The length of `ee_alpha` must be equal to the number of exits in the model (default: `[0.65, 0.70, 0.75, 0.80, 0.85, 1.00]`).
+  - Change `ee_alpha` to change weights in joint loss. `ee_alpha` is a list of weights corresponding to each exit of the model. The length of `ee_alpha` must be equal to the number of exits in the model (default: `[0.65, 0.70, 0.75, 0.80, 0.85, 1.00]`).
 
 ### Confidence
   
@@ -42,4 +42,5 @@ The evaluation scripts create files in the indicated output directory. `wer_resu
 ### Basic evaluation
 
 - Normal evaluation: `eval.py path/to/model/checkpoint path/to/output/directory`
+  -   For safetensors checkpoints saved by newer versions of Hugging Face, see note in `eval.py`.s
 - Evaluation for models without early exits (evaluates only output of final layer): `eval_non-ee.py path/to/model/checkpoint path/to/output/directory`
