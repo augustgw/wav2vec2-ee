@@ -26,6 +26,14 @@ Wav2Vec2 model training with early-exit and knowledge distillation loss mechanis
 - Fine-tuning with confidence-based EE loss: `finetune_confidence.py`
   -  Change `inverse_confidence` to change application of confidence scores on CTC loss. `True` multiplies CTC loss by `1/confidence_score`; `False` multiplies CTC loss by `confidence_score`. (default: `True`).
 
+### Manual exit activation (choosing the number of exits with which to calculate loss)
+  
+- Normal fine-tuning: `finetune_manual_activation.py`
+  -  Change `num_exits` to change the number of exits used to calculate loss. For example, when `num_exits = 2`, the output of the first and second exits in the model (e.g., Layers 2 and 4) will be used to calculate loss.
+- Fine-tuning with confidence: `finetune_manual_activation_confidence.py`
+  -  Change `num_exits` to change the number of exits used to calculate loss. For example, when `num_exits = 2`, the output of the first and second exits in the model (e.g., Layers 2 and 4) will be used to calculate loss.
+  -  Change `inverse_confidence` to change application of confidence scores on CTC loss. `True` multiplies CTC loss by `1/confidence_score`; `False` multiplies CTC loss by `confidence_score`. (default: `True`).
+
 
 ## Evaluation
 

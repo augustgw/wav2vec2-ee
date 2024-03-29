@@ -35,14 +35,6 @@ def inference(items, outfile, results):
 
     hidden_states = outputs.hidden_states
 
-    # for i in range(6):
-    #     # print(len(hidden_states[i]))
-    #     predicted_ids = torch.argmax(model.decoders[i](hidden_states[(i+1)*2]), dim=-1)
-    #     transcription = processor.batch_decode(predicted_ids)
-    #     outfile.write('\tlayer_' + str((i+1)*2) + ': ' + transcription[0].lower() + '\n')
-    #     results['layer_' + str((i+1)*2)].append(transcription[0].lower())
-    # outfile.write('\n')
-
     predicted_ids = torch.argmax(model.lm_head(hidden_states[-1]), dim=-1)
     transcription = processor.batch_decode(predicted_ids)
     outfile.write('\tpredicted: ' + transcription[0].lower() + '\n')

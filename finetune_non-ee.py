@@ -1,17 +1,13 @@
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, TrainingArguments, Wav2Vec2Config
-from train_utils import *
 from data import *
-from tqdm import tqdm
-import os 
-import torch
+from train_utils import *
+
 
 model_config = Wav2Vec2Config(num_hidden_layers=4)
 
 training_args = TrainingArguments(
     output_dir='/workspace/trained_models/non-ee_4layer',
     evaluation_strategy='no',
-    # eval_steps=50,
-    # save_total_limit=5,
     save_strategy = 'epoch',
     learning_rate=2e-5,
     per_device_train_batch_size=16,

@@ -16,7 +16,7 @@ else:
           os.mkdir(results_dir)
 
 processor = AutoProcessor.from_pretrained("facebook/wav2vec2-base")
-model = EEWav2Vec2ForCTC.from_pretrained(checkpoint_dir,output_hidden_states=True)
+model = EEWav2Vec2ForCTC.from_pretrained(checkpoint_dir, use_safetensors=True, output_hidden_states=True)
 # model = NewKDEEWav2Vec2ForCTC.from_pretrained(checkpoint_dir, processor=processor, output_hidden_states=True)
 wer = load('wer')
 
@@ -24,9 +24,13 @@ model.eval()
 
 def inference(items, outfile, results):
 
-     inputs = processor((items)["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt")
-     outfile.write('file: ' + items['file'] + '\nexpected: ' + items['text'].lower() + '\n')
-     results['expected'].append(items['text'].lower())
+     audio_arrays = [item["audio"]["array"] for item in items]
+     files = [item['file'] for item in items]
+     texts = [item['text'] for item in items]
+
+     inputs = processor(audio_arrays, sampling_rate=sampling_rate, return_tensors="pt")
+     outfile.write('file: ' + files + '\nexpected: ' + texts + '\n')
+     results['expected'].append(texts.lower())
 
      with torch.no_grad():
           outputs = model(**inputs)
@@ -59,7 +63,7 @@ for split in ['test.clean','test.other']: # ['validation.clean','validation.othe
      outfile = open(results_dir + '/' + split + '_results.txt', 'w')
      results = {'expected':[],'layer_2':[],'layer_4':[],'layer_6':[],'layer_8':[],'layer_10':[],'layer_12':[]}
 
-     for batch in tqdm(dataset):
+     for batch in tqdm(dataset.iter(batch_size=16)):
           inference(batch, outfile, results)
 
      for layer in results.keys():
